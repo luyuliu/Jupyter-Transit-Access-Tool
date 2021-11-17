@@ -503,15 +503,15 @@ class DijkstraSolver(BasicSolver.BasicSolver):
         m = Map(basemap=basemaps.OpenStreetMap.Mapnik, center=(39.963596, -83.000944), zoom=12)
 
         for receivingStopID, ODRecord in results.items():
-            radius = min((timeBudget * 60 - ODRecord["timeSC"]) * self.walkingSpeed, self.walkingDistanceLimit) 
+            radius = max(min((timeBudget * 60 - ODRecord["timeSC"]) * self.walkingSpeed, self.walkingDistanceLimit),0)
             circle = Circle()
             circle.location = (ODRecord["stop_lat"], ODRecord["stop_lon"])
-            circle.radius = radius
+            circle.radius = int(radius)
             circle.color = "black"
             circle.fill_color = "green"
 
             m.add_layer(circle)
-        m
+        return m
 
 
 def singleAccessibilitySolve(args, startLocation): # Calculate travel time from startLocation to all other stops.
