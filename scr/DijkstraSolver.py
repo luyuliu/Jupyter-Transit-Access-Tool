@@ -425,12 +425,20 @@ class DijkstraSolver(BasicSolver.BasicSolver):
                 "lastTripTypeSC": None,
                 "transferCountSC": 0,
                 "visitTagSC": False,
+                "timeRV": sys.maxsize,
+                "walkTimeRV": 0,
+                "waitTimeRV": 0,
+                "busTimeRV": 0,
+                "lastTripIDRV": 0,
+                "visitTagRV": False, # Don't need last trip type, last stopID, or transferCount, since they are the same with SC.
                 "stop_lat": self.stopsDic[eachStopID]["stop_lat"],
                 "stop_lon": self.stopsDic[eachStopID]["stop_lon"]
             } # Line 6
 
         self.visitedSet[startStopID]["timeRT"] = 0 # initialization, Line 7
         self.visitedSet[startStopID]["timeSC"] = 0 # initialization, Line 7
+        self.visitedSet[startStopID]["timeRV"] = 0 
+        self.visitedSet[startStopID]["revisitTag"] = True
 
         # OD and trips with RT timetable
         print("------ Retrospective Timetable Routing Running... ------")
@@ -497,6 +505,46 @@ class DijkstraSolver(BasicSolver.BasicSolver):
         # print(self.visitedSet)
         print("------ Scheduled Timetable Routing Finished... ------")
 
+        print("------ Realizable Timetable Routing Running... ------")
+        for destinationStopID, eachOD in self.visitedSet.items():
+            lastStopID = destinationStopID
+            if lastStopID == None:
+                continue
+            if self.visitedSet[lastStopID]["generatingStopIDSC"] == None: # There is no link between the origin and this destination according to schedule.
+                continue
+
+            trajectoryList = []  # Store the stopIDs that have not been revisited along the trajectory
+            trajectoryDebugList = []
+
+            while(lastStopID != startStopID):
+                try:
+                    thisRevisitTag = self.visitedSet[lastStopID]["visitTagRV"]
+                except:
+                    break
+                if thisRevisitTag == True:  # the previous stop has been revisited.
+                    break
+                trajectoryList.insert(0, lastStopID)
+                trajectoryDebugList.insert(0, False)
+                # Move to the prior stop
+                lastStopID = self.visitedSet[lastStopID]["generatingStopIDSC"]
+
+            for thisMiddleStopIDIndex in range(len(trajectoryList)):
+                thisMiddleStopID = trajectoryList[thisMiddleStopIDIndex]
+                lastMiddleStopID = self.visitedSet[thisMiddleStopID]["generatingStopIDSC"]
+
+                # Revisit the link between the two sebsequent stops
+
+                # Debug
+                
+                timeRV = self.revisit(lastMiddleStopID, thisMiddleStopID, startStopID)
+                try:
+                    trajectoryDebugList[thisMiddleStopIDIndex] = [int(self.visitedSet[thisMiddleStopID]["timeRV"]), int(self.visitedSet[thisMiddleStopID]["walkTimeRV"]), int(
+                        self.visitedSet[thisMiddleStopID]["waitTimeRV"]), int(self.visitedSet[thisMiddleStopID]["busTimeRV"]), int(self.visitedSet[thisMiddleStopID]["timeSC"]), int(self.visitedSet[thisMiddleStopID]["walkTimeSC"]), int(
+                        self.visitedSet[thisMiddleStopID]["waitTimeSC"]), int(self.visitedSet[thisMiddleStopID]["busTimeSC"])]
+                except:
+                    pass
+                        
+        print("------ Realizable Timetable Routing Finished... ------")
         return self.visitedSet
 
     def visualize(self, results, timeBudget):
@@ -512,6 +560,76 @@ class DijkstraSolver(BasicSolver.BasicSolver):
 
             m.add_layer(circle)
         return m
+        
+    def revisit(self, lastMiddleStopID, thisMiddleStopID, originStopID):
+        # Revisited Stop's time
+        try:
+            lastTimeRVa = self.visitedSet[lastMiddleStopID]
+            lastTimeRV = lastTimeRVa["timeRV"]
+        except:
+            lastTimeRV = None
+        if lastTimeRV == None: # There is no path to the last stop, so the rest of the path will be nonexisting.
+            self.visitedSet[thisMiddleStopID]["timeRV"] = None
+            self.visitedSet[thisMiddleStopID]["waitTimeRV"] = None
+            self.visitedSet[thisMiddleStopID]["busTimeRV"] = None
+            self.visitedSet[thisMiddleStopID]["lastTripIDRV"] = None
+            return None
+
+        lastTime = lastTimeRV + self.timestamp
+        # Should be always consistent with RV
+        thisTripTypeSC = self.visitedSet[thisMiddleStopID]["lastTripTypeSC"]
+        # lastTripTypeSC = self.visitedSet[lastMiddleStopID]["lastTripTypeSC"]
+
+        # Walk time stays the same
+        self.visitedSet[thisMiddleStopID]["walkTimeRV"] = self.visitedSet[thisMiddleStopID]["walkTimeSC"]
+
+        if thisTripTypeSC == "walk":
+            self.visitedSet[thisMiddleStopID]["timeRV"] = self.visitedSet[lastMiddleStopID]["timeRV"] + \
+                self.visitedSet[thisMiddleStopID]["walkTimeSC"] - \
+                self.visitedSet[lastMiddleStopID]["walkTimeSC"]
+            self.visitedSet[thisMiddleStopID]["waitTimeRV"] = self.visitedSet[lastMiddleStopID]["waitTimeRV"]
+            self.visitedSet[thisMiddleStopID]["busTimeRV"] = self.visitedSet[lastMiddleStopID]["busTimeRV"]
+
+        else:  # "bus"
+            try:
+                arcsList = self.arcsDicRT[lastMiddleStopID][thisMiddleStopID]
+            except:
+                self.visitedSet[thisMiddleStopID]["timeRV"] = None
+                self.visitedSet[thisMiddleStopID]["waitTimeRV"] = None
+                self.visitedSet[thisMiddleStopID]["busTimeRV"] = None
+                self.visitedSet[thisMiddleStopID]["lastTripIDRV"] = None
+                return None
+            else:
+                pass
+
+            thisTimeRV = None
+            thisWaitTimeRV = None
+            thisBusTimeRV = None
+            thisLastTripIDRV = None
+            for timeGen, eachArc in arcsList.items():
+                if timeGen >= lastTime:  # arrival time is earlier than the generating time in the thisMiddleStopID
+                    thisTimeRV = eachArc["time_rec"] - lastTime
+                    thisWaitTimeRV = timeGen - lastTime
+                    thisBusTimeRV = eachArc["bus_time"]
+                    thisLastTripIDRV = eachArc["trip_id"]
+                    break
+            if thisTimeRV != None:
+                lastTimeRV = self.visitedSet[lastMiddleStopID]["timeRV"]
+                lastWaitTimeRV = self.visitedSet[lastMiddleStopID]["waitTimeRV"] 
+                lastBusTimeRV = self.visitedSet[lastMiddleStopID]["busTimeRV"]
+                self.visitedSet[thisMiddleStopID]["timeRV"] = lastTimeRV + thisTimeRV
+                self.visitedSet[thisMiddleStopID]["waitTimeRV"] = lastWaitTimeRV + thisWaitTimeRV
+                self.visitedSet[thisMiddleStopID]["busTimeRV"] = lastBusTimeRV + thisBusTimeRV
+                self.visitedSet[thisMiddleStopID]["lastTripIDRV"] = thisLastTripIDRV
+            else:
+                self.visitedSet[thisMiddleStopID]["timeRV"] = None
+                self.visitedSet[thisMiddleStopID]["waitTimeRV"] = None
+                self.visitedSet[thisMiddleStopID]["busTimeRV"] = None
+                self.visitedSet[thisMiddleStopID]["walkTimeRV"] = None
+                self.visitedSet[thisMiddleStopID]["lastTripIDRV"] = None
+
+        self.visitedSet[thisMiddleStopID]["revisitTag"] = True
+        return self.visitedSet[thisMiddleStopID]["timeRV"]
 
 
 def singleAccessibilitySolve(args, startLocation): # Calculate travel time from startLocation to all other stops.
