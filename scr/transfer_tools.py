@@ -9,7 +9,8 @@ def daterange(start_date, end_date):
         yield start_date + timedelta(n)
 
 
-client = MongoClient('mongodb://localhost:27017/')
+# client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient('mongodb+srv://test:n1W9dNXvQu8ThFil@cluster0.4iz06.mongodb.net')
 db_GTFS = client.cota_gtfs
 db_time_stamps_set = set()
 db_time_stamps = []

@@ -5,7 +5,8 @@ import time
 
 class BasicSolver:
     def __init__(self):
-        self.client = MongoClient('mongodb://localhost:27017/')
+        # self.client = MongoClient('mongodb://localhost:27017/')
+        self.client = MongoClient('mongodb+srv://test:n1W9dNXvQu8ThFil@cluster0.4iz06.mongodb.net')
         self.db_GTFS = self.client.cota_gtfs
         self.db_time_stamps_set = set()
         self.db_time_stamps = []

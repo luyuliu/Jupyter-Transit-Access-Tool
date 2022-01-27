@@ -22,8 +22,8 @@ from collections import OrderedDict
 import time as atime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import transfer_tools
-from ipyleaflet import Map, basemaps, Circle
-client = MongoClient('mongodb://localhost:27017/')
+# client = MongoClient('mongodb://localhost:27017/')
+client = MongoClient('mongodb+srv://test:n1W9dNXvQu8ThFil@cluster0.4iz06.mongodb.net')
 
 
 class DijkstraSolver(BasicSolver.BasicSolver):
