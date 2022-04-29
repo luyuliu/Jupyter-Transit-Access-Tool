@@ -23,7 +23,7 @@ import time as atime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import transfer_tools
 # client = MongoClient('mongodb://localhost:27017/')
-client = MongoClient('mongodb+srv://test:n1W9dNXvQu8ThFil@cluster0.4iz06.mongodb.net')
+client = MongoClient('mongodb://root:NMxySSPMXDesV9ITwUVr@transit-access.app.cura.osu.edu:9000/?authSource=admin&ssl=true')
 
 
 class DijkstraSolver(BasicSolver.BasicSolver):

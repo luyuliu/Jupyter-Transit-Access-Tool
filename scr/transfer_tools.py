@@ -10,7 +10,7 @@ def daterange(start_date, end_date):
 
 
 # client = MongoClient('mongodb://localhost:27017/')
-client = MongoClient('mongodb+srv://test:n1W9dNXvQu8ThFil@cluster0.4iz06.mongodb.net')
+client = MongoClient('mongodb://root:NMxySSPMXDesV9ITwUVr@transit-access.app.cura.osu.edu:9000/?authSource=admin&ssl=true')
 db_GTFS = client.cota_gtfs
 db_time_stamps_set = set()
 db_time_stamps = []
